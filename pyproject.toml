@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "freeradius-osmohlr-gsup"
+version = "0.0.1"
+dependencies = [
+  "pyosmocom >= 0.0.1",
+  "osmopython",
+  "twisted"
+]
+requires-python = ">=3.9"
+maintainers = [
+  {email = "git@tbspace.de"}
+]
+description = "FreeRADIUS module to authenticate EAP-SIM against OsmoHLR (via GSUP)"
+readme = "README.md"
+license = {file = "COPYING"}
+keywords = ["telecom", "gsm", "cellular", "freeradius", "networking"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
+  "Programming Language :: Python"
+]
+
+[project.urls]
+Repository = "https://github.com/Manawyrm/freeradius-osmohlr-gsup"
+"Bug Tracker" = "https://github.com/Manawyrm/freeradius-osmohlr-gsup/issues"
