@@ -1,5 +1,5 @@
 from twisted.internet import reactor
-from osmopy.osmo_ipa import IPA
+from freeradius_osmohlr_gsup.osmo_ipa import IPA
 from freeradius_osmohlr_gsup.IPACommon import IPACommon
 
 

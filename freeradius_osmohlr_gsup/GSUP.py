@@ -1,4 +1,4 @@
-from osmopy.osmo_ipa import IPA
+from freeradius_osmohlr_gsup.osmo_ipa import IPA
 
 
 class GSUP(IPA):

@@ -1,16 +1,19 @@
 #!/usr/bin/env python3
-import radiusd
-
-from freeradius_osmohlr_gsup.IPAFactory import IPAFactory
-from freeradius_osmohlr_gsup.GSUPClient import GSUPClient
-
+import logging
+import sys
+import time
+from pprint import pprint as pp
 from queue import Queue
 from threading import Thread
+
+import radiusd
 from twisted.internet import reactor, threads
-import argparse, logging, sys
-from pprint import pprint as pp
+
+from freeradius_osmohlr_gsup.GSUPClient import GSUPClient
+from freeradius_osmohlr_gsup.IPAFactory import IPAFactory
 
 factory = None
+credentials = {}
 
 
 def instantiate(p):
@@ -35,25 +38,45 @@ def instantiate(p):
 
 def authorize(p):
     global factory
+    p_dict = dict(p)
 
-    username = None
-    for k, v in p:
-        if k == 'User-Name':
-            username = v
-            if username[0] == '"' and username[-1] == '"':
-                username = username[1:-1]
+    username = p_dict["User-Name"]
+    if username[0] == '"' and username[-1] == '"':
+        username = username[1:-1]
 
-            username = username.split('@')[0]
+    username = username.split('@')[0]
 
-            # identity: 1=SIM, 0=AKA, 6=AKA_PRIME
-            if username[0] == '1':
-                username = username[1:]
+    # identity: 1=SIM, 0=AKA, 6=AKA_PRIME
+    if username[0] == '1':
+        username = username[1:]
 
     if username is None:
         return radiusd.RLM_MODULE_NOTFOUND
 
-    radiusd.radlog(radiusd.L_DBG, 'IMSI %s' % username)
+    # Client will send 3 Access-Requests and will receive 3 Access-Challenges from the server
+    # Let's store the authentication data from the HLR for the next incoming requests
+    #
+    # see https://www.freeradius.org/radiusd/man/rlm_acct_unique.txt
 
+    # clean-up old authentication data
+    for client_identifier in list(credentials):
+        if credentials[client_identifier]["usage"] >= 3:
+            del credentials[client_identifier]
+        else:
+            # cached credential too old
+            if time.monotonic() - credentials[client_identifier]["time"] > 60:
+                del credentials[client_identifier]
+
+    client_identifier = p_dict["User-Name"] + p_dict["Acct-Session-Id"] + p_dict["NAS-IP-Address"] + p_dict["NAS-Port"]
+    if client_identifier in credentials:
+        credentials[client_identifier]["usage"] += 1
+
+        radiusd.radlog(radiusd.L_DBG, 'Cached credentials for IMSI %s' % username)
+        return (radiusd.RLM_MODULE_UPDATED,
+                tuple(credentials[client_identifier]["tuples"]),  # reply tuple
+                tuple())  # config tuple
+
+    radiusd.radlog(radiusd.L_DBG, 'No credentials cached for IMSI %s, requesting from HLR' % username)
     if factory.client is not None:
         queue = threads.blockingCallFromThread(reactor, factory.client.send_auth_request, username)
         response = queue.get(True, int(radiusd.config["gsup_timeout"]))
@@ -64,11 +87,11 @@ def authorize(p):
 
             # `RAND`::   User authentication challenge.
 
-            # EAP-SIM: 
+            # EAP-SIM:
             # `KC`::     Authentication value from the AuC.
             # `SRES`::   Signing response.
 
-            # EAP-AKA/AKA': 
+            # EAP-AKA/AKA':
             # `AUTN`::   Authentication value from the AuC.
             # `CK`::     Ciphering Key.
             # `IK`::     Integrity Key.
@@ -106,6 +129,7 @@ def authorize(p):
                     if tuple_count > 3:
                         break
 
+            credentials[client_identifier] = {"tuples": reply, "usage": 1, "time": time.monotonic()}
             return (radiusd.RLM_MODULE_UPDATED,
                     tuple(reply),  # reply tuple
                     tuple())  # config tuple
@@ -114,7 +138,6 @@ def authorize(p):
             radiusd.radlog(radiusd.L_ERR, 'Couldn\'t answer IMSI %s, GSUP error:' % username)
             pp(response)
             return radiusd.RLM_MODULE_NOTFOUND
-
     else:
         radiusd.radlog(radiusd.L_ERR, 'Couldn\'t answer IMSI %s, GSUP client currently not connected!' % username)
         return radiusd.RLM_MODULE_NOTFOUND

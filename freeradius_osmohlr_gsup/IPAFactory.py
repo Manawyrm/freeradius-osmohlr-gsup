@@ -1,7 +1,7 @@
 import logging
 from twisted.internet.protocol import ReconnectingClientFactory
 from freeradius_osmohlr_gsup.IPACommon import IPACommon
-from osmopy.osmo_ipa import Ctrl, IPA
+from freeradius_osmohlr_gsup.osmo_ipa import IPA
 
 """
 /*

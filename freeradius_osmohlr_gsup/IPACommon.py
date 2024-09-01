@@ -1,5 +1,5 @@
 from twisted.protocols import basic
-from osmopy.osmo_ipa import IPA
+from freeradius_osmohlr_gsup.osmo_ipa import IPA
 
 """
 /*
