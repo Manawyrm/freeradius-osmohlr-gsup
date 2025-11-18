@@ -3,6 +3,15 @@
 This package can be used to authenticate a wired (802.1x) or wireless (WPA-Enterprise) network against a SIM card using EAP-SIM.  
 The required authentication data will be provided by [OsmoHLR](https://osmocom.org/projects/osmo-hlr/wiki/OsmoHLR) via the [Generic Subscriber Update Protocol (GSUP)](https://osmocom.org/projects/cellular-infrastructure/wiki/GSUP).
 
+## Build and Install python >= 3.9 Wheel
+```bash
+pip install build
+python3 -m build
+python3 -m pip install .
+
+# if restricted user use sudo
+sudo -h python3.9 -m pip install .
+```
 ## Project status
 Works™, tested against OsmoHLR with MILENAGE
 
